@@ -1,7 +1,10 @@
 {
     "developers": {
         "dev": "123",
-        "2": "2"
+        "2": "2",
+        "baki": "baki",
+        "322": "2323",
+        "3": "3"
     },
     "players": {
         "1": "1",
@@ -44,27 +47,22 @@
             "game_type": "GUI"
         },
         "draw_guess": {
-            "author": "dev",
-            "version": "7.0",
+            "author": "322",
+            "version": "",
             "description": "",
-            "path": "server/server_data\\draw_guess\\7.0.zip",
+            "path": "server/server_data\\draw_guess\\.zip",
             "reviews": [],
             "min_players": 2,
-            "game_type": "Multiplayer"
+            "game_type": "GUI"
         },
-        "demo_game": {
-            "author": "dev",
-            "version": "2.0",
+        "new_rpg": {
+            "author": "3",
+            "version": "1.0",
             "description": "",
-            "path": "server/server_data\\demo_game\\2.0.zip",
-            "reviews": [
-                {
-                    "user": "1",
-                    "score": 3,
-                    "comment": "3",
-                    "time": 1765032871.5235288
-                }
-            ]
+            "path": "server/server_data\\new_rpg\\1.0.zip",
+            "reviews": [],
+            "min_players": 1,
+            "game_type": "GUI"
         }
     },
     "rooms": {}

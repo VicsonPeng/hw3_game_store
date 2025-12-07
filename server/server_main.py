@@ -29,6 +29,7 @@ data_store = {
     "games": {},      
     "rooms": {}       
 }
+# 線上使用者 Session 集合 (格式: "role:username")
 online_users = set()
 
 def pick_free_port(start=10000, end=20000) -> int:
@@ -94,10 +95,13 @@ def handle_client(conn, addr):
                     password = payload.get('password', '').strip()
                     role = payload.get('role', 'player') 
                     
+                    # 建立 Session ID
+                    session_id = f"{role}:{username}"
+
                     if not username or not password:
                         response = {'status': 'fail', 'message': 'Empty username or password'}
-                    elif username in online_users:
-                        response = {'status': 'fail', 'message': 'Account already logged in elsewhere.'}
+                    elif session_id in online_users:
+                        response = {'status': 'fail', 'message': f'Account ({role}) already logged in elsewhere.'}
                     else:
                         target_db = data_store["developers"] if role == 'developer' else data_store["players"]
                         
@@ -112,18 +116,21 @@ def handle_client(conn, addr):
                     if response['status'] == 'success':
                         current_user = username
                         current_role = role
-                        online_users.add(current_user)
+                        online_users.add(session_id)
                         save_data()
 
                 elif cmd == 'LOGOUT':
-                    if current_user:
-                        online_users.discard(current_user)
+                    if current_user and current_role:
+                        session_id = f"{current_role}:{current_user}"
+                        online_users.discard(session_id)
                         current_user = None
                         current_role = None
                     response = {'status': 'success'}
 
                 elif cmd == 'LIST_USERS':
-                    response = {'status': 'success', 'users': list(online_users)}
+                    # 只顯示使用者名稱，不顯示角色 (或者你可以改成 f"{u} ({r})")
+                    display_list = [sid.split(':')[1] for sid in online_users]
+                    response = {'status': 'success', 'users': display_list}
 
                 elif cmd == 'UPLOAD_GAME_INIT':
                     if not current_user or current_role != 'developer':
@@ -332,7 +339,6 @@ def handle_client(conn, addr):
                                 
                                 port = pick_free_port()
                                 token = uuid.uuid4().hex[:16]
-                                # 注意：啟動 Game Server 時，lobby_host 參數也給 PUBLIC_HOST
                                 cmd_list = [sys.executable, cfg['server']['script']] + \
                                            cfg['server']['args_template'].format(
                                                port=port, token=token, room_id=rid,
@@ -361,16 +367,21 @@ def handle_client(conn, addr):
     except Exception as e:
         print(f"[Connection Error]: {e}")
     finally:
-        if current_user:
-            online_users.discard(current_user)
-            for rid in list(data_store['rooms'].keys()):
-                if rid in data_store['rooms']:
-                    room = data_store['rooms'][rid]
-                    if current_user in room['players']:
-                        room['players'].remove(current_user)
-                        if not room['players']:
-                            del data_store['rooms'][rid]
-                            print(f"[Auto-Clean] Room {rid} deleted.")
+        # === [修正] 斷線清理邏輯 ===
+        if current_user and current_role:
+            session_id = f"{current_role}:{current_user}"
+            online_users.discard(session_id)
+            
+            # 清理房間 (只有 Player 會在房間裡)
+            if current_role == 'player':
+                for rid in list(data_store['rooms'].keys()):
+                    if rid in data_store['rooms']:
+                        room = data_store['rooms'][rid]
+                        if current_user in room['players']:
+                            room['players'].remove(current_user)
+                            if not room['players']:
+                                del data_store['rooms'][rid]
+                                print(f"[Auto-Clean] Room {rid} deleted.")
         conn.close()
 
 def start_server():

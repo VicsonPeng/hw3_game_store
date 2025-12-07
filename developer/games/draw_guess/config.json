@@ -1,6 +1,6 @@
 {
     "game_name": "draw_guess",
-    "version": "7.0",
+    "version": "",
     "description": "你畫我猜 (Gartic.io 簡易版)",
     "min_players": 2,
     "server": {
