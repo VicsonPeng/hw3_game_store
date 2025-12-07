@@ -1,0 +1,13 @@
+{
+    "game_name": "demo_game",
+    "version": "2.0",
+    "description": "Demo Game for Store System",
+    "server": {
+        "script": "server.py",
+        "args_template": ""
+    },
+    "client": {
+        "script": "client.py",
+        "args_template": ""
+    }
+}

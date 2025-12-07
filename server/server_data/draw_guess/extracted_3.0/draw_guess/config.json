@@ -1,0 +1,13 @@
+{
+    "game_name": "draw_guess",
+    "version": "3.0",
+    "description": "你畫我猜 (Gartic.io 簡易版)",
+    "server": {
+        "script": "server.py",
+        "args_template": "--port {port}"
+    },
+    "client": {
+        "script": "client.py",
+        "args_template": "--host {host} --port {port} --user {user}"
+    }
+}

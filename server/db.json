@@ -1,0 +1,71 @@
+{
+    "developers": {
+        "dev": "123",
+        "2": "2"
+    },
+    "players": {
+        "1": "1",
+        "2": "2",
+        "3": "3"
+    },
+    "games": {
+        "tetris_game": {
+            "author": "dev",
+            "version": "2.0",
+            "description": "",
+            "path": "server/server_data\\tetris_game\\2.0.zip",
+            "reviews": [
+                {
+                    "user": "1",
+                    "score": 5,
+                    "comment": "great game",
+                    "time": 1764920226.8702939
+                },
+                {
+                    "user": "1",
+                    "score": 3,
+                    "comment": "",
+                    "time": 1764920620.9180918
+                },
+                {
+                    "user": "2",
+                    "score": 5,
+                    "comment": "\u597dgmae",
+                    "time": 1765041520.2262628
+                },
+                {
+                    "user": "1",
+                    "score": 1,
+                    "comment": "gay",
+                    "time": 1765104459.2499206
+                }
+            ],
+            "min_players": 1,
+            "game_type": "GUI"
+        },
+        "draw_guess": {
+            "author": "dev",
+            "version": "7.0",
+            "description": "",
+            "path": "server/server_data\\draw_guess\\7.0.zip",
+            "reviews": [],
+            "min_players": 2,
+            "game_type": "Multiplayer"
+        },
+        "demo_game": {
+            "author": "dev",
+            "version": "2.0",
+            "description": "",
+            "path": "server/server_data\\demo_game\\2.0.zip",
+            "reviews": [
+                {
+                    "user": "1",
+                    "score": 3,
+                    "comment": "3",
+                    "time": 1765032871.5235288
+                }
+            ]
+        }
+    },
+    "rooms": {}
+}
