@@ -603,7 +603,19 @@ class RoomLobbyPage(tk.Frame):
     def start_game_client(self, info):
         self.in_game = True
         if self.music_player: self.music_player.stop()
-        ok, msg, proc = launch_game_client(info['game_name'], self.username, info['game_host'], info['game_port'], info['token'])
+        
+        # === [修正] 強制使用大廳連線的 IP (HOST) ===
+        # 原本是: info['game_host']
+        # 改成: HOST
+        ok, msg, proc = launch_game_client(
+            info['game_name'], 
+            self.username, 
+            HOST,  # <--- 這裡改成 HOST (即 140.113.17.11)
+            info['game_port'], 
+            info['token']
+        )
+        # ========================================
+        
         if ok:
             self.game_proc = proc
         else:
@@ -631,24 +643,36 @@ class RoomLobbyPage(tk.Frame):
         self.destroy()
 
     def do_start(self):
-        try:
-            min_p = 1
-            config_path = os.path.join(DOWNLOAD_DIR, self.game_name, 'config.json')
-            if not os.path.exists(config_path):
-                 config_path = os.path.join(DOWNLOAD_DIR, self.game_name, self.game_name, 'config.json')
-            if os.path.exists(config_path):
-                with open(config_path, 'r', encoding='utf-8') as f:
-                    min_p = json.load(f).get('min_players', 1)
+        # 1. 取得最新房間資訊以確認即時人數
+        info = safe_request(self.client, {'command': 'GET_ROOM_INFO', 'payload': {'room_id': self.room_id}})
+        if not info or info.get('status') != 'success':
+            return 
             
-            # [修正] 取得即時資訊並檢查
-            info = safe_request(self.client, {'command': 'GET_ROOM_INFO', 'payload': {'room_id': self.room_id}})
-            current_count = len(info.get('players', []))
-            
-            if current_count < min_p:
-                messagebox.showwarning("人數不足", f"此遊戲 ({self.game_name}) 至少需要 {min_p} 人才能開始。\n目前人數: {current_count}")
-                return # 阻擋開始
-        except: pass
+        current_count = len(info.get('players', []))
 
+        # 2. 讀取本地 Config 確認最小人數需求
+        min_p = 1
+        try:
+            game_root = os.path.join(DOWNLOAD_DIR, self.game_name)
+            target = game_root
+            # 偵測內層目錄
+            if os.path.exists(os.path.join(game_root, self.game_name, 'config.json')):
+                target = os.path.join(game_root, self.game_name)
+            
+            cfg_path = os.path.join(target, 'config.json')
+            if os.path.exists(cfg_path):
+                with open(cfg_path, 'r', encoding='utf-8') as f:
+                    min_p = json.load(f).get('min_players', 1)
+        except Exception:
+            pass
+
+        # 3. [修正] 執行檢查：若人數不足則阻擋
+        if current_count < min_p:
+            messagebox.showwarning("人數不足", f"此遊戲 ({self.game_name}) 至少需要 {min_p} 人才能開始。\n目前人數: {current_count}")
+            return 
+        # ========================================
+
+        # 4. 發送開始請求
         resp = safe_request(self.client, {'command': 'START_GAME', 'payload': {'room_id': self.room_id}})
         if resp and resp['status'] != 'success':
             messagebox.showwarning("無法開始", resp.get('message'))
@@ -660,6 +684,38 @@ class RoomLobbyPage(tk.Frame):
             safe_request(self.client, {'command': 'LEAVE_ROOM', 'payload': {'room_id': self.room_id}})
         self.dashboard.show_store()
         self.destroy()
+
+class OnlinePage(tk.Frame):
+    def __init__(self, master, client, username, dashboard):
+        super().__init__(master)
+        self.configure(bg=CURRENT_THEME['content_bg'])
+        
+        tk.Label(self, text="線上玩家列表", font=(CURRENT_THEME['font_family'], 18, "bold"), 
+                 bg=CURRENT_THEME['content_bg'], fg=CURRENT_THEME['text_fg']).pack(pady=10)
+        
+        self.listbox = tk.Listbox(self, font=(CURRENT_THEME['font_family'], 12),
+                                  bg=CURRENT_THEME['list_bg'], fg=CURRENT_THEME['list_fg'])
+        self.listbox.pack(expand=True, fill='both', padx=20, pady=10)
+        
+        # 取得線上名單
+        resp = safe_request(client, {'command': 'LIST_USERS'})
+        if resp and resp.get('status') == 'success':
+            for u in resp.get('users', []):
+                self.listbox.insert("end", u)
+        
+        # 加入重新整理按鈕
+        tk.Button(self, text="重新整理", command=self.refresh, 
+                  bg=CURRENT_THEME['btn_bg'], fg=CURRENT_THEME['btn_fg']).pack(pady=5)
+
+    def refresh(self):
+        self.listbox.delete(0, "end")
+        resp = safe_request(self.master.master.client, {'command': 'LIST_USERS'}) # 透過 master 取得 client
+        # 或者更簡單，重新 reload page:
+        # self.dashboard.show_online() 
+        # 但這裡我們手動更新 listbox 體驗較好
+        if resp and resp.get('status') == 'success':
+            for u in resp.get('users', []):
+                self.listbox.insert("end", u)
 
 class PluginsPage(tk.Frame):
     def __init__(self, master, client, username, dashboard):

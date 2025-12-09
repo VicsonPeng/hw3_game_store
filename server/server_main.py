@@ -438,18 +438,35 @@ def start_server():
         print(f"Error binding to port {PORT}: {e}")
         return
     server.listen()
+    
+    # === [修正] 設定 Timeout 讓迴圈能響應 Ctrl+C ===
+    server.settimeout(1.0) 
+    # ============================================
+    
     print(f"[LISTENING] Server is listening on 0.0.0.0:{PORT}")
     print(f"[CONFIG] Public Host (reported to clients): {PUBLIC_HOST}")
+    print("Press Ctrl+C to stop server.")
+
     while True:
         try:
-            conn, addr = server.accept()
+            try:
+                # 嘗試接受連線，若 1秒內沒人連，會噴 socket.timeout
+                conn, addr = server.accept()
+            except socket.timeout:
+                continue # 沒人連線，回到迴圈開頭 (這時會檢查 Ctrl+C)
+            
             thread = threading.Thread(target=handle_client, args=(conn, addr))
             thread.daemon = True
             thread.start()
+            
         except KeyboardInterrupt:
+            print("\n[SHUTDOWN] Server stopping...")
             break
         except Exception as e:
             print(f"Accept Error: {e}")
+            break
+    
+    server.close()
 
 if __name__ == "__main__":
     start_server()
