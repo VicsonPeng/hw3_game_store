@@ -3,7 +3,7 @@
     "version": "1.0",
     "description": "你畫我猜 (Gartic.io 簡易版)",
     "min_players": 2,
-    "max_players": 5, 
+    "max_players": 5,
     "server": {
         "script": "server.py",
         "args_template": "--port {port}"
