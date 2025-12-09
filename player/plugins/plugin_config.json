@@ -1,4 +1,5 @@
 {
     "music_plugin.py": false,
-    "other_plugin.py": false
+    "theme_cute.py": false,
+    "theme_dark.py": true
 }

@@ -1,6 +1,6 @@
 {
     "game_name": "tetris_game",
-    "version": "2.0",
+    "version": "5.0",
     "description": "俄羅斯方塊對戰",
     "min_players": 1,
     "server": {

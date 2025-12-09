@@ -17,6 +17,7 @@ from common.utils import send_json, recv_json, recv_file, send_file
 HOST = '0.0.0.0' 
 PORT = 5555
 PUBLIC_HOST = '127.0.0.1'
+MAX_ROOMS = 100
 
 DB_FILE = 'server/db.json'
 STORAGE_DIR = 'server/server_data'
@@ -27,9 +28,9 @@ data_store = {
     "developers": {}, 
     "players": {},    
     "games": {},      
-    "rooms": {}       
+    "rooms": {},
+    "user_history": {}
 }
-# 線上使用者 Session 集合 (格式: "role:username")
 online_users = set()
 
 def pick_free_port(start=10000, end=20000) -> int:
@@ -53,6 +54,7 @@ def load_data():
                     loaded = json.loads(content)
                     if "developers" not in loaded: loaded["developers"] = {}
                     if "players" not in loaded: loaded["players"] = {}
+                    if "user_history" not in loaded: loaded["user_history"] = {}
                     data_store = loaded
         except Exception as e:
             print(f"[Warning] DB load failed: {e}, using empty DB")
@@ -67,6 +69,7 @@ def save_data():
                 save_dict = {
                     "developers": data_store.get("developers", {}),
                     "players": data_store.get("players", {}),
+                    "user_history": data_store.get("user_history", {}),
                     "games": data_store.get("games", {}),
                     "rooms": {} 
                 }
@@ -78,6 +81,29 @@ def handle_client(conn, addr):
     print(f"[NEW CONNECTION] {addr} connected.")
     current_user = None
     current_role = None 
+
+    # === [新增] 統一清理函式 ===
+    def cleanup_user_session(user, role):
+        if not user or not role: return
+        
+        # 1. 從線上名單移除 (使用正確的 session_id)
+        session_id = f"{role}:{user}"
+        if session_id in online_users:
+            online_users.discard(session_id)
+            print(f"[LOGOUT] {session_id} removed from online list.")
+
+        # 2. 從所有房間移除 (僅限玩家)
+        if role == 'player':
+            for rid in list(data_store['rooms'].keys()):
+                if rid in data_store['rooms']:
+                    room = data_store['rooms'][rid]
+                    if user in room['players']:
+                        room['players'].remove(user)
+                        # 如果房間空了，刪除房間
+                        if not room['players']:
+                            del data_store['rooms'][rid]
+                            print(f"[Auto-Clean] Room {rid} deleted.")
+    # ==========================
     
     try:
         while True:
@@ -95,7 +121,6 @@ def handle_client(conn, addr):
                     password = payload.get('password', '').strip()
                     role = payload.get('role', 'player') 
                     
-                    # 建立 Session ID
                     session_id = f"{role}:{username}"
 
                     if not username or not password:
@@ -120,15 +145,15 @@ def handle_client(conn, addr):
                         save_data()
 
                 elif cmd == 'LOGOUT':
-                    if current_user and current_role:
-                        session_id = f"{current_role}:{current_user}"
-                        online_users.discard(session_id)
-                        current_user = None
-                        current_role = None
+                    # === [修正] 呼叫統一清理 ===
+                    cleanup_user_session(current_user, current_role)
+                    # =========================
+                    current_user = None
+                    current_role = None
                     response = {'status': 'success'}
 
                 elif cmd == 'LIST_USERS':
-                    # 只顯示使用者名稱，不顯示角色 (或者你可以改成 f"{u} ({r})")
+                    # 顯示純名字，隱藏 role 前綴
                     display_list = [sid.split(':')[1] for sid in online_users]
                     response = {'status': 'success', 'users': display_list}
 
@@ -214,18 +239,29 @@ def handle_client(conn, addr):
                          response = {'status': 'fail', 'message': 'Only players can rate'}
                     else:
                         name = payload.get('game_name')
-                        if name in data_store['games']:
-                            review = {
-                                'user': current_user, 
-                                'score': payload.get('score'), 
-                                'comment': payload.get('comment'), 
-                                'time': time.time()
-                            }
-                            data_store['games'][name].setdefault('reviews', []).append(review)
-                            save_data()
-                            response = {'status': 'success', 'message': 'Review added'}
+                        score = payload.get('score')
+                        comment = payload.get('comment', '')
+
+                        if not isinstance(score, int) or not (1 <= score <= 5):
+                            response = {'status': 'fail', 'message': 'Score must be 1-5'}
+                        elif len(comment) > 50:
+                            response = {'status': 'fail', 'message': 'Comment too long'}
                         else:
-                            response = {'status': 'fail', 'message': 'Game not found'}
+                            history = data_store.get('user_history', {}).get(current_user, [])
+                            if name not in history:
+                                response = {'status': 'fail', 'message': 'You must play this game before rating!'}
+                            elif name in data_store['games']:
+                                review = {
+                                    'user': current_user, 
+                                    'score': score, 
+                                    'comment': comment, 
+                                    'time': time.time()
+                                }
+                                data_store['games'][name].setdefault('reviews', []).append(review)
+                                save_data()
+                                response = {'status': 'success', 'message': 'Review added'}
+                            else:
+                                response = {'status': 'fail', 'message': 'Game not found'}
 
                 elif cmd == 'DOWNLOAD_GAME_INIT':
                     name = payload.get('game_name')
@@ -251,7 +287,11 @@ def handle_client(conn, addr):
                         response = {'status': 'fail', 'message': 'Login as Player required'}
                     else:
                         name = payload.get('game_name')
-                        if name in data_store['games']:
+                        if name not in data_store['games']:
+                            response = {'status': 'fail', 'message': 'Game has been removed or not found'}
+                        elif len(data_store['rooms']) >= MAX_ROOMS:
+                            response = {'status': 'fail', 'message': 'Server room limit reached'}
+                        else:
                             rid = str(len(data_store['rooms']) + 100)
                             data_store['rooms'][rid] = {
                                 'host': current_user, 'game_name': name,
@@ -260,8 +300,6 @@ def handle_client(conn, addr):
                                 'chat_history': [] 
                             }
                             response = {'status': 'success', 'room_id': rid}
-                        else:
-                            response = {'status': 'fail', 'message': 'Game not found'}
 
                 elif cmd == 'LOBBY_CHAT':
                     rid = payload.get('room_id')
@@ -322,15 +360,25 @@ def handle_client(conn, addr):
                     rid = payload.get('room_id')
                     if rid in data_store['rooms']:
                         room = data_store['rooms'][rid]
+                        game_name = room['game_name']
+                        
+                        # 記錄遊玩歷史
+                        for p_name in room['players']:
+                            if p_name not in data_store.get('user_history', {}):
+                                data_store.setdefault('user_history', {})[p_name] = []
+                            if game_name not in data_store['user_history'][p_name]:
+                                data_store['user_history'][p_name].append(game_name)
+                        save_data()
+
                         if current_user == room['host']:
                             try:
-                                g_info = data_store['games'][room['game_name']]
+                                g_info = data_store['games'][game_name]
                                 extract_dir = os.path.join(os.path.dirname(g_info['path']), f"extracted_{g_info['version']}")
                                 if not os.path.exists(extract_dir):
                                     with zipfile.ZipFile(g_info['path'], 'r') as zf: zf.extractall(extract_dir)
                                 
                                 target = extract_dir
-                                nested = os.path.join(extract_dir, room['game_name'])
+                                nested = os.path.join(extract_dir, game_name)
                                 if os.path.exists(nested) and os.path.exists(os.path.join(nested, 'config.json')):
                                     target = nested
                                 
@@ -367,21 +415,9 @@ def handle_client(conn, addr):
     except Exception as e:
         print(f"[Connection Error]: {e}")
     finally:
-        # === [修正] 斷線清理邏輯 ===
-        if current_user and current_role:
-            session_id = f"{current_role}:{current_user}"
-            online_users.discard(session_id)
-            
-            # 清理房間 (只有 Player 會在房間裡)
-            if current_role == 'player':
-                for rid in list(data_store['rooms'].keys()):
-                    if rid in data_store['rooms']:
-                        room = data_store['rooms'][rid]
-                        if current_user in room['players']:
-                            room['players'].remove(current_user)
-                            if not room['players']:
-                                del data_store['rooms'][rid]
-                                print(f"[Auto-Clean] Room {rid} deleted.")
+        # === [修正] 呼叫統一清理 (確保斷線時也能清除房間狀態) ===
+        cleanup_user_session(current_user, current_role)
+        # =========================
         conn.close()
 
 def start_server():

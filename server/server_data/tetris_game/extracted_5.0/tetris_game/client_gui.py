@@ -55,16 +55,30 @@ class ClientGUI:
         self.primary_idx = 0       # 0=第一個人放大, 1=第二個人放大
     
     def on_close(self):
-        print("你已經離開遊戲")  # 終端機顯示提示
+        """處理視窗關閉 (由主執行緒呼叫)"""
+        # 如果已經標記關閉，就不要再執行，避免重複 destroy
+        if not self.running: 
+            try: self.root.destroy()
+            except: pass
+            return
+
+        print(f"[{self.name}] 離開遊戲")
         self.running = False
+        
+        # 嘗試通知 Server
         try:
             if self.sock:
-                # 傳送 LEAVE 封包告訴 Server 我要走了
                 send_json(self.sock, {"type": "LEAVE"})
+                self.sock.shutdown(socket.SHUT_RDWR)
                 self.sock.close()
         except:
             pass
-        self.root.destroy()  # 真正關閉視窗
+        
+        # 銷毀視窗
+        try:
+            self.root.destroy()
+        except:
+            pass
 
     def draw_board(self, board, ox, oy, cell):
         for y in range(20):
@@ -135,7 +149,16 @@ class ClientGUI:
             self.start_ms = now_ms()
 
             while self.running:
-                msg = recv_json(self.sock)
+                try:
+                    msg = recv_json(self.sock)
+                except Exception as e:
+                    # [修正] 忽略預期的關閉錯誤，不印出 alarming 的訊息
+                    err_msg = str(e)
+                    if "10038" in err_msg or "closed" in err_msg or not self.running:
+                        break
+                    print("Network error:", e)
+                    break
+
                 if not msg:
                     break
 
@@ -166,23 +189,27 @@ class ClientGUI:
                         self.op['score'] = other['score']
                         self.op['lines'] = other['lines']
                         self.op['alive'] = other['alive']
-                if msg.get('type') == 'GAME_OVER':
-                    # 印到 console（終端）
+                elif msg.get('type') == 'GAME_OVER':
                     print("[GAME_OVER]", msg.get('message') or "", "winner=", msg.get('winner'))
-
-                    # 顯示在 GUI（畫面中央）
                     self.running = False
-                    text = msg.get('message') or f"GAME OVER\nWinner: {msg.get('winner')}"
+                    
+                    # 顯示結束畫面 (這部分涉及 GUI 操作，最好也用 after，但 Canvas 操作相對寬容)
                     self.canvas.delete("all")
+                    text = msg.get('message') or f"GAME OVER\nWinner: {msg.get('winner')}"
                     self.canvas.create_text(10 + 5*CELL, 10 + 10*CELL,
                                             text=text, fill="white", font=("Arial", 16, "bold"))
-                    # 2 秒後關閉視窗（想留著就移除下一行）
-                    self.root.after(2000, self.root.destroy)
-                    continue
-
-
+                    
+                    # [修正] 使用 after 讓主執行緒執行關閉，避免 Tcl 錯誤
+                    self.root.after(3000, self.on_close)
+                    return
+                
         except Exception as e:
-            print("Network error:", e)
+            if self.running:
+                print("Connection setup error:", e)
+        finally:
+            # [修正] 若迴圈意外結束且還沒關閉，請求主執行緒關閉
+            if self.running:
+                self.root.after(0, self.on_close)
 
     def on_key(self, ev):
         if self.spectator:

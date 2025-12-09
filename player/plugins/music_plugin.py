@@ -3,6 +3,8 @@ import time
 import winsound
 import sys
 
+DESCRIPTION = "在進入房間時自動播放背景音樂"
+
 class RoomMusicPlayer:
     def __init__(self, room_id, username):
         self.room_id = room_id
