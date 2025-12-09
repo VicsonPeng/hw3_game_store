@@ -340,11 +340,14 @@ class GameDetailWindow(tk.Toplevel):
         tk.Label(self, text=game_name, font=(CURRENT_THEME['font_family'], 16, "bold"),
                  bg=CURRENT_THEME['content_bg'], fg=CURRENT_THEME['text_fg']).pack(pady=10)
         
+        min_p = info.get('min_players', 1)
+        max_p = info.get('max_players', "∞") 
+        
         info_txt = (
             f"作者: {info['author']}\n"
             f"版本: {info['version']}\n"
             f"類型: {info.get('game_type', 'GUI')}\n"
-            f"人數: {info.get('min_players', 1)}+\n\n"
+            f"人數: {min_p} - {max_p} 人\n\n"
             f"簡介: {info['description']}\n"
         )
         tk.Label(self, text=info_txt, justify='left', bg=CURRENT_THEME['content_bg'], fg=CURRENT_THEME['text_fg']).pack(pady=5, padx=20, anchor='w')
@@ -628,7 +631,7 @@ class RoomLobbyPage(tk.Frame):
         self.running = False 
         safe_request(self.client, {'command': 'LEAVE_ROOM', 'payload': {'room_id': self.room_id}})
         if self.music_player: self.music_player.stop()
-
+        
         if messagebox.askyesno("遊戲結束", "要再來一局嗎？(重新開房)"):
              resp = safe_request(self.client, {'command': 'CREATE_ROOM', 'payload': {'game_name': self.game_name}})
              if resp and resp['status'] == 'success':
@@ -652,6 +655,7 @@ class RoomLobbyPage(tk.Frame):
 
         # 2. 讀取本地 Config 確認最小人數需求
         min_p = 1
+        max_p = 100 
         try:
             game_root = os.path.join(DOWNLOAD_DIR, self.game_name)
             target = game_root
@@ -662,15 +666,18 @@ class RoomLobbyPage(tk.Frame):
             cfg_path = os.path.join(target, 'config.json')
             if os.path.exists(cfg_path):
                 with open(cfg_path, 'r', encoding='utf-8') as f:
-                    min_p = json.load(f).get('min_players', 1)
+                    cfg = json.load(f)
+                    min_p = cfg.get('min_players', 1)
+                    max_p = cfg.get('max_players', 100)
         except Exception:
             pass
 
-        # 3. [修正] 執行檢查：若人數不足則阻擋
         if current_count < min_p:
             messagebox.showwarning("人數不足", f"此遊戲 ({self.game_name}) 至少需要 {min_p} 人才能開始。\n目前人數: {current_count}")
             return 
-        # ========================================
+        if current_count > max_p: 
+            messagebox.showwarning("人數過多", f"人數過多 (目前: {current_count})，此遊戲最多支援 {max_p} 人。\n請請多餘的玩家離開房間。")
+            return
 
         # 4. 發送開始請求
         resp = safe_request(self.client, {'command': 'START_GAME', 'payload': {'room_id': self.room_id}})

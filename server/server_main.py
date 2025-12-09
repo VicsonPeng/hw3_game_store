@@ -164,6 +164,7 @@ def handle_client(conn, addr):
                         game_name = payload.get('game_name')
                         version = payload.get('version', '1.0')
                         min_p = payload.get('min_players', 1)
+                        max_p = payload.get('max_players', 4)
                         g_type = payload.get('game_type', 'GUI') 
                         desc = payload.get('desc', '')
 
@@ -182,6 +183,7 @@ def handle_client(conn, addr):
                                     'path': save_path,
                                     'reviews': old_reviews,
                                     'min_players': min_p,
+                                    'max_players': max_p, # <--- [新增] 存入資料庫
                                     'game_type': g_type
                                 }
                                 save_data()
@@ -373,6 +375,13 @@ def handle_client(conn, addr):
                         if current_user == room['host']:
                             try:
                                 g_info = data_store['games'][game_name]
+
+                                max_p = g_info.get('max_players', 100) # 若舊資料無此欄位，給寬鬆預設值
+                                if len(room['players']) > max_p:
+                                    response = {'status': 'fail', 'message': f'人數過多！此遊戲最多支援 {max_p} 人'}
+                                    send_json(conn, response)
+                                    continue
+                                
                                 extract_dir = os.path.join(os.path.dirname(g_info['path']), f"extracted_{g_info['version']}")
                                 if not os.path.exists(extract_dir):
                                     with zipfile.ZipFile(g_info['path'], 'r') as zf: zf.extractall(extract_dir)

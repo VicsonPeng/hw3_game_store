@@ -149,6 +149,19 @@ def main():
 
             desc = get_valid_input("輸入簡介 (選填, Enter跳過): ", required=False)
             if desc is None: continue # 輸入 q 取消
+
+            game_path = os.path.join(GAMES_DIR, game_name)
+            config_path = os.path.join(game_path, 'config.json')
+            default_max = "4"
+            
+            if os.path.exists(config_path):
+                try:
+                    with open(config_path, 'r', encoding='utf-8') as f:
+                        default_max = str(json.load(f).get('max_players', 4))
+                except: pass
+
+            max_p_input = get_valid_input(f"輸入最大人數限制 (預設 {default_max}): ", required=False)
+            max_players = int(max_p_input) if max_p_input else int(default_max)
             
             # === 3. 選擇類型 ===
             print("遊戲類型?")
@@ -177,8 +190,12 @@ def main():
             send_json(client, {
                 'command': 'UPLOAD_GAME_INIT',
                 'payload': {
-                    'game_name': game_name, 'version': version, 'desc': desc, 
-                    'min_players': min_players, 'game_type': g_type
+                    'game_name': game_name, 
+                    'version': version, 
+                    'desc': desc, 
+                    'min_players': min_players, 
+                    'max_players': max_players,  
+                    'game_type': g_type
                 }
             })
             

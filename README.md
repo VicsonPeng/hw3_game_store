@@ -4,10 +4,23 @@
 支援開發者上架遊戲、玩家下載/更新/遊玩，以及 Plugin 擴充功能。
 
 ##  目錄結構
-* `server/` - 商城伺服器與資料庫
-* `developer/` - 開發者端 (上架工具)
-* `player/` - 玩家端 (大廳、下載區、Plugin)
-* `common/` - 共用通訊協定
+```
+HW3_GAME_STORE/
+├── common/              # 共用模組 (定義通訊協定、封包處理)
+├── server/              # 伺服器端
+│   ├── server_data/     # 存放已上架的遊戲檔案 (Zip)
+│   ├── db.json          # 資料庫 (使用者、遊戲資訊、評論、歷史紀錄)
+│   └── server_main.py   # 伺服器主程式 (Lobby + Data Server)
+├── developer/           # 開發者端工具
+│   ├── games/           # 開發者本地的遊戲專案原始碼
+│   ├── template/        # 標準遊戲骨架範本
+│   ├── create_game_template.py  # 快速建立新遊戲腳本
+│   └── dev_client.py    # 開發者客戶端 (上架/更新/下架)
+└── player/              # 玩家端
+    ├── downloads/       # 玩家已下載的遊戲 (依帳號隔離，支援版本控管)
+    ├── plugins/         # 擴充功能商店 (存放所有可用 Plugin)
+    └── player_client.py # 玩家客戶端 (GUI 大廳)
+```
 
 ##  快速啟動 (Demo 流程)
 
@@ -76,8 +89,8 @@ python developer/create_game_template.py [game_name]
 * **操作**: 在主選單 `4. 擴充功能` 中可自由安裝/移除/啟用/停用。
 
 ### 2. 遊戲實作
-* **Draw Guess (你畫我猜)**: 完整 GUI、即時繪圖同步、聊天室猜題、斷線自動判定勝利。
-* **Tetris (俄羅斯方塊)**: 雙人對戰，支援即時觀看對手畫面。
+* **Draw Guess (你畫我猜)**: 多人連線遊玩、完整 GUI、即時繪圖同步、聊天室猜題、斷線自動判定勝利。
+* **Tetris (俄羅斯方塊)**: 支援單人遊玩、雙人對戰
 
 ### 3. UX 優化
 * **下載隔離**: 不同玩家帳號擁有獨立下載目錄。
