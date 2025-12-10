@@ -82,7 +82,6 @@ def handle_client(conn, addr):
     current_user = None
     current_role = None 
 
-    # === [新增] 統一清理函式 ===
     def cleanup_user_session(user, role):
         if not user or not role: return
         
@@ -103,8 +102,7 @@ def handle_client(conn, addr):
                         if not room['players']:
                             del data_store['rooms'][rid]
                             print(f"[Auto-Clean] Room {rid} deleted.")
-    # ==========================
-    
+
     try:
         while True:
             request = recv_json(conn)
@@ -145,9 +143,7 @@ def handle_client(conn, addr):
                         save_data()
 
                 elif cmd == 'LOGOUT':
-                    # === [修正] 呼叫統一清理 ===
                     cleanup_user_session(current_user, current_role)
-                    # =========================
                     current_user = None
                     current_role = None
                     response = {'status': 'success'}
@@ -183,7 +179,7 @@ def handle_client(conn, addr):
                                     'path': save_path,
                                     'reviews': old_reviews,
                                     'min_players': min_p,
-                                    'max_players': max_p, # <--- [新增] 存入資料庫
+                                    'max_players': max_p, 
                                     'game_type': g_type
                                 }
                                 save_data()
@@ -424,9 +420,7 @@ def handle_client(conn, addr):
     except Exception as e:
         print(f"[Connection Error]: {e}")
     finally:
-        # === [修正] 呼叫統一清理 (確保斷線時也能清除房間狀態) ===
         cleanup_user_session(current_user, current_role)
-        # =========================
         conn.close()
 
 def start_server():
@@ -447,10 +441,7 @@ def start_server():
         print(f"Error binding to port {PORT}: {e}")
         return
     server.listen()
-    
-    # === [修正] 設定 Timeout 讓迴圈能響應 Ctrl+C ===
     server.settimeout(1.0) 
-    # ============================================
     
     print(f"[LISTENING] Server is listening on 0.0.0.0:{PORT}")
     print(f"[CONFIG] Public Host (reported to clients): {PUBLIC_HOST}")

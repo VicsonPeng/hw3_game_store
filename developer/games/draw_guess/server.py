@@ -175,7 +175,6 @@ class GameServer:
                         self.players[self.drawer]["score"] += 5
                     self.guessed_players.add(conn)
                     
-                    # === [新增] 檢查勝利條件：分數 >= 500 ===
                     winner = None
                     if self.players[conn]["score"] >= WIN_SCORE:
                         winner = self.players[conn]["name"]
@@ -186,7 +185,6 @@ class GameServer:
                         self.broadcast("SYS_MSG", f"🏆 {winner} 達到 {WIN_SCORE} 分，贏得比賽！")
                         self.broadcast("FORCE_QUIT", {}) # 全體結束
                         return
-                    # ====================================
                 
                 self.send_json(conn, "CORRECT_GUESS", {"score": score_gain})
                 self.broadcast("SYS_MSG", f"★ {name} 猜對了答案！", exclude=conn)
@@ -205,7 +203,6 @@ class GameServer:
                 color = self.players[conn]["color"]
             self.broadcast("CHAT_MSG", {"name": name, "text": text, "color": color})
 
-    # === [新增] 總遊戲結束邏輯 ===
     def end_game(self, msg):
         with self.lock:
             self.state = STATE_WAITING # 強制回到等待，中斷遊戲迴圈
@@ -225,7 +222,6 @@ class GameServer:
             if self.clients:
                 self.broadcast("SYS_MSG", "--- 新遊戲即將開始 ---")
                 self.start_selection_phase()
-    # ==========================
 
     # === 遊戲流程 ===
 

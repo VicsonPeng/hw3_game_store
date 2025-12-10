@@ -26,7 +26,6 @@ PLUGIN_CONFIG_FILE = None             # 玩家設定檔
 
 client_lock = threading.Lock()
 
-# === [新增] 主題系統 ===
 DEFAULT_THEME = {
     "main_bg": "#f0f0f0",
     "nav_bg": "#333333",
@@ -607,18 +606,14 @@ class RoomLobbyPage(tk.Frame):
         self.in_game = True
         if self.music_player: self.music_player.stop()
         
-        # === [修正] 強制使用大廳連線的 IP (HOST) ===
-        # 原本是: info['game_host']
-        # 改成: HOST
         ok, msg, proc = launch_game_client(
             info['game_name'], 
             self.username, 
-            HOST,  # <--- 這裡改成 HOST (即 140.113.17.11)
+            HOST,  
             info['game_port'], 
             info['token']
         )
-        # ========================================
-        
+
         if ok:
             self.game_proc = proc
         else:
@@ -716,10 +711,7 @@ class OnlinePage(tk.Frame):
 
     def refresh(self):
         self.listbox.delete(0, "end")
-        resp = safe_request(self.master.master.client, {'command': 'LIST_USERS'}) # 透過 master 取得 client
-        # 或者更簡單，重新 reload page:
-        # self.dashboard.show_online() 
-        # 但這裡我們手動更新 listbox 體驗較好
+        resp = safe_request(self.master.master.client, {'command': 'LIST_USERS'}) 
         if resp and resp.get('status') == 'success':
             for u in resp.get('users', []):
                 self.listbox.insert("end", u)
@@ -787,8 +779,6 @@ class PluginsPage(tk.Frame):
             self.cfg[fname] = True
             save_plugin_config(self.cfg)
             messagebox.showinfo("成功", f"{fname} 已安裝")
-            
-            # [Fix] Use self.dashboard instead of self.master to call show_plugins
             self.dashboard.show_plugins() 
             
         except Exception as e:
@@ -798,10 +788,7 @@ class PluginsPage(tk.Frame):
         self.cfg[fname] = not current_state
         save_plugin_config(self.cfg)
         messagebox.showinfo("設定已變更", f"{fname} 已{'停用' if current_state else '啟用'} (需重啟生效)")
-        
-        # [Fix] Use self.dashboard instead of self.master to call show_plugins
         self.dashboard.show_plugins()
-
 
 # ============================
 #        App Entry

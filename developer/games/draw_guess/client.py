@@ -44,17 +44,17 @@ class GarticClient:
         self.lbl_timer = tk.Label(top_frame, text="--", font=("Arial", 24, "bold"), bg="#333", fg="#ff5555")
         self.lbl_timer.pack(side=tk.RIGHT, padx=20)
 
-        # 2. 右側面板 (寬度縮小為 220)
+        # 2. 右側面板 
         right_panel = tk.Frame(self.root, width=220, bg="#f0f0f0")
         right_panel.pack(side=tk.RIGHT, fill=tk.Y)
         right_panel.pack_propagate(False) # 固定寬度不被撐開
         
-        # 排行榜 (高度縮小，字體優化)
+        # 排行榜 
         tk.Label(right_panel, text="🏆 排行榜", font=("Microsoft JhengHei", 11, "bold"), bg="#ddd", pady=5).pack(fill=tk.X)
         self.rank_list = tk.Listbox(right_panel, height=6, font=("Microsoft JhengHei", 10), bg="#f9f9f9", bd=0, selectbackground="#f9f9f9")
         self.rank_list.pack(fill=tk.X, padx=2, pady=2)
         
-        # 聊天紀錄 (佔據剩餘空間)
+        # 聊天紀錄 
         tk.Label(right_panel, text="💬 聊天室", font=("Microsoft JhengHei", 11, "bold"), bg="#ddd", pady=5).pack(fill=tk.X)
         self.chat_log = tk.Text(right_panel, state='disabled', bg="white", font=("Microsoft JhengHei", 10), spacing1=2)
         self.chat_log.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
@@ -63,7 +63,7 @@ class GarticClient:
         self.chat_log.tag_config("mine", foreground="#555")
         self.chat_log.tag_config("alert", foreground="red")
         
-        # 輸入框 (增加 ipady 讓格子變高，避免切到字母 g/j/p/q)
+        # 輸入框 
         self.entry_chat = tk.Entry(right_panel, font=("Microsoft JhengHei", 11))
         self.entry_chat.pack(fill=tk.X, padx=5, pady=10, ipady=4) # ipady=4 增加內部高度
         self.entry_chat.bind("<Return>", self.send_chat)
